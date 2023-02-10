@@ -53,8 +53,7 @@ exports.startScheduler = async (req, res, next) => {
       }
     }
   } else if (scheduleType === "every minute") {
-    if(!minute)
-    {
+    if (!minute) {
       return res.status(400).send("Enter valid Number");
     }
     if (typeof minute == "string") {
@@ -115,12 +114,12 @@ exports.startScheduler = async (req, res, next) => {
   if (!validateUrl(schedulerTemplete.httpUrl)) {
     return res.status(400).send(`Invalid URL: ${schedulerTemplete.httpUrl}`);
   }
-  
+
   let task = cron.schedule(
     `${time}`,
     async () => {
       console.log(`running a task ${scheduleType}`);
-      makeApiCall(schedulerTemplete.httpUrl,schedulerTemplete.httpMethod);
+      makeApiCall(schedulerTemplete.httpUrl, schedulerTemplete.httpMethod);
     },
     {
       scheduled: true,
@@ -129,9 +128,9 @@ exports.startScheduler = async (req, res, next) => {
   );
   tasks[taskId] = task;
   console.log(task)
-  const options=task.options
-  
-  return  res.status(200).send({message:'Updated and reschedule your application',taskId,options});
+  const options = task.options
+
+  return res.status(200).send({ message: 'Seschedule your application', taskId, options });
 };
 
 exports.reSchedule = (req, res, next) => {
@@ -152,6 +151,7 @@ exports.reSchedule = (req, res, next) => {
   // });
   */
 };
+
 /*
 * We use this controller to update and reschedule the  the api according to the user's input.
 */
