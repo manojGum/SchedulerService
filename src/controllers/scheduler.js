@@ -150,7 +150,7 @@ exports.startScheduler = async (req, res, next) => {
       console.log(`Task run: ${counter++}`);
       makeApiCall(url, method, data);
     }, time);
-    return res.send({ taskId,scheduleType });
+    return res.send({ taskId, scheduleType });
   } else {
     let task = cron.schedule(
       `${time}`,
@@ -175,8 +175,8 @@ exports.startScheduler = async (req, res, next) => {
 };
 
 /*
-* We use this controller to update and reschedule the  the api according to the user's input.
-*/
+ * We use this controller to update and reschedule the  the api according to the user's input.
+ */
 exports.updateScheduler = async (req, res, next) => {
   const schedulerTemplete = await req.body;
   let newTime;
@@ -207,7 +207,7 @@ exports.updateScheduler = async (req, res, next) => {
     });
   }
   let scheduleType = schedulerTemplete.scheduleType.toLowerCase();
-  console.log(scheduleType)
+  console.log(scheduleType);
   if (
     scheduleType !== "every second" &&
     scheduleType !== "every millisecond" &&
@@ -242,7 +242,7 @@ exports.updateScheduler = async (req, res, next) => {
           .send("Enter valid input between 1 to less then 1000");
       }
     }
-  }else if (scheduleType === "every second") {
+  } else if (scheduleType === "every second") {
     if (typeof newSecond == "string") {
       return res.status(400).send("Enter valid Number");
     } else {
@@ -307,23 +307,22 @@ exports.updateScheduler = async (req, res, next) => {
   if (!validateUrl(schedulerTemplete.httpUrl)) {
     return res.status(400).send(`Invalid URL: ${schedulerTemplete.httpUrl}`);
   }
-  
-  if(scheduleType=="every millisecond"){
+
+  if (scheduleType == "every millisecond") {
     let task = tasksMilliSecond[id];
     if (task) {
-    clearTimeout(task);
-    task = setInterval(() => {
-      makeApiCall(url, method, data);
-    },newTime);
-    tasksMilliSecond[id] = task;
-      return res.status(200).send({id,scheduleType });
-    }
-    else{
+      clearTimeout(task);
+      task = setInterval(() => {
+        makeApiCall(url, method, data);
+      }, newTime);
+      tasksMilliSecond[id] = task;
+      return res.status(200).send({ id, scheduleType });
+    } else {
       return res.status(400).send({
         message: "your application Id is incorrect or not schedule",
       });
     }
-  }else{
+  } else {
     let task = tasks[id];
     if (task) {
       task.stop();
@@ -342,18 +341,13 @@ exports.updateScheduler = async (req, res, next) => {
       return res.status(200).send({
         message: "Updated and reschedule your application",
       });
-    }
-    else{
+    } else {
       return res.status(400).send({
         message: "your application Id is incorrect or not schedule",
       });
     }
   }
 };
-
-
-
-
 
 /*
  * We use this controller to stop running api according to the user's input Id.
@@ -364,21 +358,25 @@ exports.stopScheduler = (req, res, next) => {
   if (scheduleType === "every millisecond") {
     let task = tasksMilliSecond[id];
     if (task) {
-    clearTimeout(task);
-    delete scheduledTasks[id];
-    return res.status(200).send({ message: 'Your application is successfully stop' });
+      clearTimeout(task);
+      delete scheduledTasks[id];
+      return res
+        .status(200)
+        .send({ message: "Your application is successfully stop" });
     }
-    return res.status(400).send({message: 'Your application id is incorrect or  not found'})
+    return res
+      .status(400)
+      .send({ message: "Your application id is incorrect or  not found" });
   } else {
     let task = tasks[id];
     if (task) {
       task.stop();
       delete tasks[id];
       console.log(tasks);
-     return res.status(200).send({
+      return res.status(200).send({
         message: "Your application is successfully stop",
       });
     }
-    return res.send({message: 'Your application id is not found'})
+    return res.send({ message: "Your application id is not found" });
   }
 };
