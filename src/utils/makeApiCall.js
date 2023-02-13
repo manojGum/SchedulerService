@@ -1,24 +1,19 @@
 const axios = require('axios')
-const makeApiCall=async (url,reqtype)=>{
-    try{
-       
-        if(reqtype=="get"|| "GET"){
-            console.log("check",url)
-          await axios.get(url);
-        }else if(reqtype=="POST"|| "POST"){
-           await axios.post(url);
-        }
-        else if(reqtype=="put"|| "PUT"){
-            await axios.put(url);
-        }else if(reqtype=="delete"|| "DELETE"){
-            await axios.delete(url);
-        }
+const makeApiCall=(url, method, data)=>{
+    let options = {
+        url: url,
+        method: method,
+        data: data
+    };
 
-
-    }catch(error){
-        console.log(error)
-        
-    }
-  }
+    axios(options)
+        .then(response => {
+            console.log(`API call to ${url} succeeded with status ${response.status}`);
+            console.log(response)
+        })
+        .catch(error => {
+            console.log(`API call to ${url} failed with error: ${error}`);
+        });
+}
 
   module.exports=makeApiCall

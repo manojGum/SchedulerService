@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const scheduler = require("../controllers/scheduler");
+const updateScheduler = require('../controllers/updateScheduler')
 /*
  * We use this router to schedule the  the api according to the user's input like time,date and save the return request for next working like reschedule update and more.
  */
