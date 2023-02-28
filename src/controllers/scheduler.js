@@ -1,25 +1,19 @@
 const cron = require("node-cron");
-const startSchedulerModel = require("../models/startSchedulerService");
+const cronParser = require("cron-parser");
+const SaveSchema = require("../models/startSchedulerService");
 const validateUrl = require("../utils/urlValidate");
 const makeApiCall = require("../utils/makeApiCall");
-let tasks = {};
-let tasksMilliSecond = {};
+let tasks = require('../utils/data.json')
 /*
+// let tasks = {};
  * We use this controller to schedule the  the api according to the user's input.
  */
 exports.startScheduler = async (req, res, next) => {
   const schedulerTemplete = await req.body;
-  let time;
-  let millisecond = schedulerTemplete.millisecond;
-  console.log(millisecond);
-  let second = Number(schedulerTemplete.second);
-  let minute = schedulerTemplete.minute;
-  let hour = schedulerTemplete.hours;
-  let week = schedulerTemplete.week;
-  let dayOfMonth = schedulerTemplete.dayofmonth;
   let url = schedulerTemplete.httpUrl;
   let method = schedulerTemplete.httpMethod;
   let data = schedulerTemplete.data || "";
+  const timeZone = schedulerTemplete.timeZone || "asia/kolkata";
   if (!schedulerTemplete.schedulerName) {
     return res.status(400).send({
       message: `Scheduler Name is required filled `,
@@ -35,143 +29,119 @@ exports.startScheduler = async (req, res, next) => {
       message: `Request Method is required `,
     });
   }
-  let scheduleType = schedulerTemplete.scheduleType.toLowerCase();
-  console.log(scheduleType);
-  if (
-    scheduleType !== "every second" &&
-    scheduleType !== "every millisecond" &&
-    scheduleType !== "every minute" &&
-    scheduleType !== "every hours" &&
-    scheduleType !== "every day" &&
-    scheduleType !== "every week" &&
-    scheduleType !== "evey months"
-  ) {
+  const pattern = schedulerTemplete.pattern;
+  if (!pattern) {
     return res.status(400).send({
-      message: `Types of Schedule is required `,
+      message: `Enter the time pattern`,
     });
   }
-
-  if (scheduleType === "every millisecond") {
-    if (!millisecond) {
-      return res
-        .status(400)
-        .send("Enter valid input between 1 to less then 1000");
-    }
-    if (typeof millisecond == "string") {
-      return res.status(400).send("Enter valid millisecond in Number");
-    } else {
-      if (
-        typeof millisecond == "number" &&
-        millisecond >= 1 &&
-        millisecond <= 999
-      ) {
-        time = millisecond;
-      } else {
-        return res
-          .status(400)
-          .send("Enter valid input between 1 to less then 1000");
-      }
-    }
-  } else if (scheduleType === "every second") {
-    if (typeof second == "string") {
-      return res.status(400).send("Enter valid Number");
-    } else {
-      if (typeof second == "number" && second <= 59) {
-        time = `*/${second} * * * * *`;
-      } else {
-        return res.status(400).send("Enter valid input between less then 59");
-      }
-    }
-  } else if (scheduleType === "every minute") {
-    if (!minute) {
-      return res.status(400).send("Enter valid Number");
-    }
-    if (typeof minute == "string") {
-      return res.status(400).send("Enter valid Number");
-    } else {
-      if (typeof minute == "number" && minute > 0 && minute <= 59) {
-        time = `*/${minute} * * * *`;
-      } else {
-        return res.status(400).send("Enter valid input between 1 to 59");
-      }
-    }
-  } else if (scheduleType === "every hours") {
-    if (typeof minute == "string" || typeof hour == "string") {
-      return res.status(400).send("Enter valid Number");
-    } else {
-      if (typeof minute == "number" && minute >= 0 && minute <= 59) {
-        if (typeof hour == "number" && hour > 0 && hour <= 23) {
-          time = `${minute} */${hour} * * *`;
-          console.log(time);
-        } else {
-          return res.status(400).send("Enter valid input between 1 to 23");
-        }
-      } else {
-        return res.status(400).send("Enter valid input between 1 to 59");
-      }
-    }
-  } else if (scheduleType === "every day") {
-    if (typeof minute == "string" || typeof hour == "string") {
-      return res.status(400).send("Enter valid Number");
-    } else {
-      if (typeof minute == "number" && minute >= 0 && minute <= 59) {
-        if (typeof hour == "number" && hour >= 0 && hour <= 23) {
-          time = `${minute} ${hour} * * *`;
-          console.log(time);
-        } else {
-          return res.status(400).send("Enter valid input between 0 to 23");
-        }
-      } else {
-        return res.status(400).send("Enter valid input between 0 to 59");
-      }
-    }
-  } else if (scheduleType === "every week") {
-    if (!minute || !hour || !week) {
-      return res.status(400).send("Minute and hours are required field");
-    }
-    time = `${minute} ${hour} * * ${week}`;
-    console.log(time);
-  } else if (scheduleType === "evey months") {
-    if (!minute || !hour || !dayOfMonth) {
-      return res
-        .status(400)
-        .send("Minute and hours are day of month required field");
-    }
-    time = `${minute} ${hour} ${dayOfMonth} * *`;
-    console.log(time);
-  }
-  let taskId = Date.now();
-  if (!validateUrl(schedulerTemplete.httpUrl)) {
+  if (!validateUrl(url)) {
     return res.status(400).send(`Invalid URL: ${schedulerTemplete.httpUrl}`);
   }
-  let counter = 0;
-  if (millisecond) {
-    tasksMilliSecond[taskId] = setInterval(() => {
-      console.log(`Task run: ${counter++}`);
-      makeApiCall(url, method, data);
-    }, time);
-    return res.send({ taskId, scheduleType });
-  } else {
+
+  try {
+    const interval = cronParser.parseExpression(pattern);
+    // Extract the fields from the interval object and build the cron expression string
+    const expression = `${interval.fields.second.toString()} ${interval.fields.minute.toString()} ${interval.fields.hour.toString()} ${interval.fields.dayOfMonth.toString()} ${interval.fields.month.toString()} ${interval.fields.dayOfWeek.toString()} `;
+
+    /*// Schedule a task to run every generated cron expression
+    // let taskId = Date.now();
+    */
+    let mili = schedulerTemplete.milliseconds.trim();
+    if (mili) {
+      if (pattern.trim().split(" ").length < 6) {
+        return res.send("cron expression is invalid or missing");
+      }
+    }
+    let times = (1000 / mili)
     let task = cron.schedule(
-      `${time}`,
+      expression,
       async () => {
-        console.log(`running a task ${scheduleType}`);
-        makeApiCall(url, method, data);
+        /*
+          * let d = new Date();
+          * let milliseconds = d.getMilliseconds()
+          * let second = d.getSeconds();
+         */
+        if (times == "Infinity" || times == "NaN") {
+          makeApiCall(url, method, data);
+          /*
+          // console.log(d);
+          // console.log("millisecond", milliseconds)
+          // console.log("second", second);
+          */
+        } else {
+          console.log("hello.............................................");
+          for (let i = 0; i < times; i++) {
+            setTimeout(function () {
+              /*
+              // const d = new Date();
+              // const second = d.getSeconds();
+              // const millisecond = d.getMilliseconds();
+              // console.log(d);
+              // console.log(millisecond);
+              // console.log(second);
+              */
+              makeApiCall(url, method, data);
+              console.log("Task running every 100 milliseconds");
+            }, mili * i);
+            //1000 ms is 1 sec, here I have give 0.5 seconds as a delay;
+          }
+        }
       },
       {
         scheduled: true,
-        timezone: schedulerTemplete.timeZone,
+        name: schedulerTemplete.schedulerName,
+        timezone: timeZone,
       }
     );
-    tasks[taskId] = task;
-    console.log(task);
-    const options = task.options;
 
-    return res
-      .status(200)
-      .send({ message: "Seschedule your application", taskId, options });
+    // console.log("task",task)
+    // console.log("task._scheduler.timeout._idlePrev._idlePrev",task._scheduler.timeout._idlePrev._idlePrev)
+    // console.log(task)
+    delete task._scheduler.timeout
+    let change = req.body;
+    change.ScheduledTask = task
+    /*
+    // tasks[taskId] = change.ScheduledTask;
+    // console.log(change.ScheduledTask)
+    */
+    let details = await SaveSchema.create(change)
+    if (!details) {
+
+      return res.status(500).send('The Details cannot be created');
+    }
+    tasks[details.id] = change.ScheduledTask;
+    // console.log(tasks)
+    return res.json(details.id)
+    /*
+     // let details = new SaveSchema({
+     //   schedulerName:req.body.schedulerName,
+     //   httpUrl:req.body.httpUrl,
+     //   httpMethod:req.body.httpMethod,
+     //   pattern:req.body.pattern,
+     //   milliseconds:req.body.milliseconds,
+     //   schedule:true,
+     //   timeZone:req.body.timeZone ||"asia/kolkata",
+     //   scheduleId:{task},
+     // })
+     // details = await details.save();
+     // if (!details)
+     //   return res.status(500).send('The Details cannot be created')
+     // return res.send(details)
+     */
+    /*
+        // tasks[taskId] = task;
+        // const options = task.options;
+        // return res.status(201).json({
+        //   message: "Seschedule your application",
+        //   taskId,
+        //   options,
+        // });
+        */
+  } catch (error) {
+    console.log(error);
+    return res.status(400).send(error.message);
   }
-  // console.log(tasks)
 };
 
 /*
@@ -179,24 +149,17 @@ exports.startScheduler = async (req, res, next) => {
  */
 exports.updateScheduler = async (req, res, next) => {
   const schedulerTemplete = await req.body;
-  let newTime;
-  let newMillisecond = schedulerTemplete.millisecond;
-  let newSecond = Number(schedulerTemplete.second);
-  const newMinute = schedulerTemplete.minute;
-  const newHour = schedulerTemplete.hours;
-  const newWeek = schedulerTemplete.week;
-  const newDayOfMonth = schedulerTemplete.dayofmonth;
-  const id = schedulerTemplete.id;
+  const id = await req.params.id;
   let url = schedulerTemplete.httpUrl;
-  let method = schedulerTemplete.httpMethod;
+  let method = schedulerTemplete.method;
   let data = schedulerTemplete.data || "";
   const timeZone = schedulerTemplete.timeZone || "asia/kolkata";
-  if (!schedulerTemplete.id) {
+  if (!id) {
     return res.status(400).send({
-      message: `Scheduler id is required filled `,
+      message: `Scheduler id is required`,
     });
   }
-  if (!newUrl) {
+  if (!url) {
     return res.status(400).send({
       message: `'URL can't be empty'`,
     });
@@ -206,177 +169,142 @@ exports.updateScheduler = async (req, res, next) => {
       message: `Request Method is required `,
     });
   }
-  let scheduleType = schedulerTemplete.scheduleType.toLowerCase();
-  console.log(scheduleType);
-  if (
-    scheduleType !== "every second" &&
-    scheduleType !== "every millisecond" &&
-    scheduleType !== "every minute" &&
-    scheduleType !== "every hours" &&
-    scheduleType !== "every day" &&
-    scheduleType !== "every week" &&
-    scheduleType !== "evey months"
-  ) {
+  const pattern = schedulerTemplete.pattern;
+  if (!pattern) {
     return res.status(400).send({
-      message: `Types of Schedule is required `,
+      message: `Enter the time pattern`,
     });
   }
-  if (scheduleType === "every millisecond") {
-    if (!newMillisecond) {
-      return res
-        .status(400)
-        .send("Enter valid input between 1 to less then 1000");
-    }
-    if (typeof newMillisecond == "string") {
-      return res.status(400).send("Enter valid millisecond in Number");
-    } else {
-      if (
-        typeof newMillisecond == "number" &&
-        newMillisecond >= 1 &&
-        newMillisecond <= 999
-      ) {
-        newTime = newMillisecond;
-      } else {
-        return res
-          .status(400)
-          .send("Enter valid input between 1 to less then 1000");
-      }
-    }
-  } else if (scheduleType === "every second") {
-    if (typeof newSecond == "string") {
-      return res.status(400).send("Enter valid Number");
-    } else {
-      if (typeof newSecond == "number" && newSecond <= 59) {
-        newTime = `*/${newSecond} * * * * *`;
-      } else {
-        return res.status(400).send("Enter valid input between less then 59");
-      }
-    }
-  } else if (scheduleType === "every minute") {
-    if (typeof newMinute == "string") {
-      return res.send("Enter valid Number");
-    } else {
-      if (typeof newMinute == "number" && newMinute > 0 && newMinute <= 59) {
-        newTime = `*/${newMinute} * * * *`;
-      } else {
-        return res.send("Enter valid input between 1 to 59");
-      }
-    }
-  } else if (scheduleType === "every hours") {
-    if (typeof newMinute == "string" || typeof newHour == "string") {
-      return res.send("Enter valid Number");
-    } else {
-      if (typeof newMinute == "number" && newMinute >= 0 && newMinute <= 59) {
-        if (typeof newHour == "number" && newHour > 0 && newHour <= 23) {
-          newTime = `${newMinute} */${newHour} * * *`;
-          console.log(newTime);
-        } else {
-          return res.send("Enter valid input between 1 to 23");
-        }
-      } else {
-        return res.send("Enter valid input between 1 to 59");
-      }
-    }
-  } else if (scheduleType === "every day") {
-    if (typeof newMinute == "string" || typeof newHour == "string") {
-      return res.send("Enter valid Number");
-    } else {
-      if (typeof newMinute == "number" && newMinute >= 0 && newMinute <= 59) {
-        if (typeof newHour == "number" && newHour >= 0 && newHour <= 23) {
-          newTime = `${newMinute} ${newHour} * * *`;
-          console.log(newTime);
-        } else {
-          return res.send("Enter valid input between 0 to 23");
-        }
-      } else {
-        return res.send("Enter valid input between 0 to 59");
-      }
-    }
-  } else if (scheduleType === "every week") {
-    if (!newMinute || !newHour || !newWeek) {
-      return res.send("Minute and hours are required field");
-    }
-    newTime = `${newMinute} ${newHour} * * ${newWeek}`;
-  } else if (scheduleType === "evey months") {
-    if (!newMinute || !newHour || !newDayOfMonth) {
-      return res.send("Minute and hours are day of month required field");
-    }
-    let newTime = `${newMinute} ${newHour} ${newDayOfMonth} * *`;
-    console.log(newTime);
-  }
-  if (!validateUrl(schedulerTemplete.httpUrl)) {
-    return res.status(400).send(`Invalid URL: ${schedulerTemplete.httpUrl}`);
-  }
+  try {
+    const interval = cronParser.parseExpression(pattern);
+    // console.log(interval)
 
-  if (scheduleType == "every millisecond") {
-    let task = tasksMilliSecond[id];
-    if (task) {
-      clearTimeout(task);
-      task = setInterval(() => {
-        makeApiCall(url, method, data);
-      }, newTime);
-      tasksMilliSecond[id] = task;
-      return res.status(200).send({ id, scheduleType });
-    } else {
-      return res.status(400).send({
-        message: "your application Id is incorrect or not schedule",
-      });
+    // Extract the fields from the interval object and build the cron expression string
+    const expression = `${interval.fields.second.toString()} ${interval.fields.minute.toString()} ${interval.fields.hour.toString()} ${interval.fields.dayOfMonth.toString()} ${interval.fields.month.toString()} ${interval.fields.dayOfWeek.toString()} `;
+
+    let mili = schedulerTemplete.milliseconds.trim();
+    if (mili) {
+      if (pattern.trim().split(" ").length < 6) {
+        return res.send("cron expression is invalid or missing");
+      }
     }
-  } else {
-    let task = tasks[id];
-    if (task) {
-      task.stop();
-      task = cron.schedule(
-        newTime,
-        () => {
-          console.log(`running a task ${scheduleType} ${newMinute}`);
-          makeApiCall(url, method, data);
-        },
+    let times = (1000 / mili)
+    const details = await SaveSchema.findById(req.params.id);
+    if (details.id) {
+      let task = tasks[details.id];
+      let count = 0;
+      if (task) {
+        task.stop();
+        task = cron.schedule(
+          expression,
+          async () => {
+            if (times == "Infinity" || times == "NaN") {
+              console.log(`running a task ${count++}`);
+              makeApiCall(url, method, data);
+            } else {
+              for (let i = 0; i < times; i++) {
+                setTimeout(function () {
+                  makeApiCall(url, method, data);
+                  console.log("Task running every 100 milliseconds");
+                }, mili * i);
+                //1000 ms is 1 sec, here I have give 0.5 seconds as a delay;
+              }
+            }
+          },
+          {
+            scheduled: true,
+            name: schedulerTemplete.schedulerName,
+            timezone: timeZone,
+          }
+        );
+        tasks[details.id] = task;
+
+
+          delete task._scheduler.timeout
+          let change = req.body;
+          change.ScheduledTask = task
+
+          await SaveSchema.findByIdAndUpdate(
+            req.params.id,
+            change,
+            { new: true }
+          ).then((detailss)=>{
+            if(!detailss){
+              return res.status(400).send("the Details cannot be updated");
+            }
+            else{
+              return res.status(201).json({id:detailss._id,message:"Details updated"})
+            }
+          }).catch((err)=>{
+            res.status(500).json({
+              error: err,
+              success: false,
+            });
+          });
+        } else {
+          return res.status(400).send({
+            message: "your application is not schedul",
+          });
+        }
+      } else {
+        return res.status(400).send({
+          message: "your application is incorrect or not schedule",
+        });
+      }
+    } catch (error) {
+      console.log(error);
+      return res.status(400).send(error.message);
+    }
+  };
+
+  /*
+   * We use this controller to stop running api according to the user's input Id.
+   */
+  exports.stopScheduler = async (req, res, next) => {
+    /*
+    // let id = req.body.id;
+    */
+    const id = await req.params.id
+    
+    try {
+      let task = tasks[id];
+      if (task) {
+        task.stop();
+        delete tasks[id];
+        const details = await SaveSchema.findByIdAndRemove(id);
+        if(details)
         {
-          scheduled: true,
-          timezone: timeZone,
-        }
-      );
-      tasks[id] = task;
-      return res.status(200).send({
-        message: "Updated and reschedule your application",
-      });
-    } else {
-      return res.status(400).send({
-        message: "your application Id is incorrect or not schedule",
-      });
-    }
-  }
-};
+          return res.status(200).send({
+            message: "Your application is successfully stop and deleted",
+          });
 
-/*
- * We use this controller to stop running api according to the user's input Id.
- */
-exports.stopScheduler = (req, res, next) => {
-  let id = req.body.id;
-  let scheduleType = req.body.scheduleType;
-  if (scheduleType === "every millisecond") {
-    let task = tasksMilliSecond[id];
-    if (task) {
-      clearTimeout(task);
-      delete scheduledTasks[id];
-      return res
-        .status(200)
-        .send({ message: "Your application is successfully stop" });
+        }
+      }
+      return res.status(400).send({ message: "Your application id is not Schedule" });
+    } catch (error) {
+      return res.status(500).send({ error });
     }
-    return res
-      .status(400)
-      .send({ message: "Your application id is incorrect or  not found" });
-  } else {
-    let task = tasks[id];
-    if (task) {
-      task.stop();
-      delete tasks[id];
-      console.log(tasks);
-      return res.status(200).send({
-        message: "Your application is successfully stop",
-      });
-    }
-    return res.send({ message: "Your application id is not found" });
+  };
+
+  exports.countScheduler =async (req, res) => {
+    const totalSchedule = await SaveSchema.countDocuments({ schedule: true });
+  if (!totalSchedule) {
+    return res.status(500).json({ success: false, message:"Schedule not avilable" });
   }
-};
+  return res.send({ totalSchedule });
+/*
+    // let length = 0;
+    // for (let key in tasks) {
+    //   if (tasks.hasOwnProperty(key)) {
+    //     ++length;
+    //   }
+    // }
+    // if (tasks) {
+    //   return res.status(200).send({
+    //     message: `${length} scheduler service is running currently`,
+    //   });
+    // }
+    // return res.send({ message: "currently no schedule" });
+  */
+
+  };

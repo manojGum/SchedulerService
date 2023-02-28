@@ -1,84 +1,43 @@
 const mongoose = require("mongoose");
-const startSchedulerSchema = mongoose.Schema(
+const startSchedulerSchema = new mongoose.Schema(
   {
     schedulerName: {
       type: String,
-      required: true,
+      required: false,
     },
     httpUrl: {
       type: String,
       required: true,
     },
+    data: {
+      type: Object,
+      default: ""
+    },
     httpMethod: {
       type: String,
       required: true,
-      enum: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+      enum: ["get", "post", "put", "patch", "delete"],
     },
-    scheduleType: {
+    pattern: {
       type: String,
       required: true,
-      enum: [
-        "every second",
-        "every minute",
-        "every hours",
-        "every day",
-        "every week",
-        "evey months",
-      ],
     },
-    second: {
-      type: Number,
-      min: 0,
-      max: 59,
-      required: true,
-      default: "",
-    },
-    minute: {
-      type: Number,
-      min: 0,
-      max: 59,
-      required: true,
-      default: "",
-    },
-    hours: {
-      type: Number,
-      min: 0,
-      max: 59,
-      default: "",
-    },
-    dayOfWeek: {
-      type: String,
-      min: 0,
-      max: 6,
-      message: "Enter valid number only 0 to 6",
-      default: "",
-    },
-    dayofMonth: {
+    milliseconds: {
       type: Number,
       min: 1,
-      max: 31,
+      max: 999,
       default: "",
-    },
-    Month: {
-      type: Number,
-      min: 0,
-      max: 6,
-      default: "",
-    },
-    schedule: {
-      type: Boolean,
-      enum: ["true", "false"],
-      default: true,
     },
     timeZone: {
       type: String,
+      required: true,
       default: "asia/kolkata",
     },
+      ScheduledTask:mongoose.Mixed,
   },
   {
     versionKey: false,
     timestamps: true,
   }
 );
-
 module.exports = mongoose.model("scheduler", startSchedulerSchema);
