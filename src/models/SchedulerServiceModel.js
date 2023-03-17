@@ -28,12 +28,17 @@ const startSchedulerSchema = new mongoose.Schema(
       max: 999,
       default: "",
     },
+    
+scheduled:{
+  type:Boolean,
+  default:"true"
+},
     timeZone: {
       type: String,
       required: true,
       default: "asia/kolkata",
     },
-      ScheduledTask:mongoose.Mixed,
+    ScheduledTask:mongoose.Mixed,
   },
   {
     versionKey: false,

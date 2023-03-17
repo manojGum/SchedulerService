@@ -10,7 +10,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 /*
-with the help of this middelware , we decide which router to send  according to the  user request.
+* with the help of this middelware , we decide which router to send  according to the  user request.
 */
 
 app.use(`${apiUrl}`,schedulerRouters)

@@ -9,7 +9,7 @@ const makeApiCall=(url, method, data)=>{
     axios(options)
         .then(response => {
             console.log(`API call to ${url} succeeded with status ${response.status}`);
-            // console.log(response)
+            return response
         })
         .catch(error => {
             console.log(`API call to ${url} failed with error: ${error}`);
