@@ -1,0 +1,28 @@
+const { determineIntent } = require("../helpers/determineIntent");
+const { generateHRResponse } = require("../helpers/generateHRResponse");
+
+
+const processHRQuery = async (query) => {
+  const intent = await determineIntent(query);
+  const response = await generateHRResponse(intent);
+  return response;
+};
+
+const messageController = async (req, res) => {
+  const query = req.body.msg.toLowerCase();
+  const message =await processHRQuery(query);
+  return res.json({message});
+};
+
+module.exports = { messageController };
+
+
+// function checkVacationStatus(applicationId) {
+//   // Check the status of the vacation application with the given ID
+//   // Return a message indicating the status of the application
+// }
+
+// function scheduleTrainingSession(trainingId, date) {
+//   // Schedule a training session with the given ID on the given date
+//   // Return a confirmation message
+// }
